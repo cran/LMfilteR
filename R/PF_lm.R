@@ -1,4 +1,3 @@
-
 #' Parameter Estimation Of Linear Regression Using Particle Filters
 
 #' @description Estimation of the coefficients of a linear regression based on a particle filter algorithm. Given \code{Data1}, the first columnn is set
@@ -13,7 +12,9 @@
 #'
 #' \eqn{Y = \beta_0  + \beta_1*X_1 + ... + \beta_n*X_n  + \epsilon},  (\eqn{\epsilon \sim N(0,1)})
 #'
-#' using particle filter methods. The state-space equations are considered as follows:
+#' using particle filter methods. The algorithm implementation follows the work of An, D., Choi, J. H., Kim, N. H. (2013) adapted for the case of linear models.
+#'
+#' The state-space equations are considered as follows:
 #'
 #' \eqn{(Eq. 1) X_{k} = a_0 + a_1 * X1_{k-1} + ... + a_n * Xn_{k-1}}
 #'
@@ -32,6 +33,8 @@
 #'
 #' In case no \code{Data1} is provided, synthetic data set is generated automatically taking three normal i.i.d. variables, and the dependent variable is computed as in
 #' \eqn{Y = 2 + 1.25*X_1 + 2.6*X_2 - 0.7*X_3 + \epsilon}
+#'
+#'
 #'
 #' @return A list containing the estimated parameter on each observation with \code{n} particles.
 #' @author Christian Llano Robayo, Nazrul Shaikh.
@@ -70,81 +73,81 @@
 #' plot(apply(Res3[['a2Resul']],1,mean),type="l")
 #'
 #' @export
+#' @references An, D., Choi, J. H., Kim, N. H. (2013). Prognostics 101: A tutorial for particle filter-based prognostics algorithm using Matlab. Reliability Engineering & System Safety, 115, DOI: https://doi.org/10.1016/j.ress.2013.02.019
 #' @references Ristic, B., Arulampalam, S., Gordon, N. (2004). Beyond the Kalman filter: particle filters for tracking applications. Boston, MA: Artech House. ISBN: 158053631X.
 #' @references West, M., Harrison, J. (1997). Bayesian forecasting and dynamic models (2nd ed.). New York: Springer. ISBN: 0387947256.
 
+
 PF_lm <- function( Data1, n = 500L, sigma_est = FALSE, initDisPar){
 
-if (missing(Data1))
+  if (missing(Data1))
   {
-  Data1 <- MASS::mvrnorm(40, mu = rep(1,3), Sigma = diag(3), empirical = TRUE)
-  eps <- stats::runif(40)
-  Y <- 2 + 1.25*Data1[,1] + 2.6*Data1[,2] - 0.7*Data1[,3] + eps
-  Data1 <- as.data.frame(cbind(Y,Data1))
+    Data1 <- MASS::mvrnorm(40, mu = rep(1,3), Sigma = diag(3), empirical = TRUE)
+    eps <- stats::runif(40)
+    Y <- 2 + 1.25*Data1[,1] + 2.6*Data1[,2] - 0.7*Data1[,3] + eps
+    Data1 <- as.data.frame(cbind(Y,Data1))
   }
 
-if (!is.data.frame(Data1)) stop("Argument 'Data1' must be a data frame or matrix", call. = FALSE)
-if (length(n)>1)  stop("Argument 'n' with length > 1", call. = FALSE)
-if (!is.integer(n)) stop("Argument 'n' must be an integer number", call. = FALSE)
-if (length(sigma_est)>1)  stop("Argument 'sigma_est' with length > 1", call. = FALSE)
-if (!is.logical(sigma_est)) stop("Argument 'sigma_est' must be a logic", call. = FALSE)
+  if (!is.data.frame(Data1)) stop("Argument 'Data1' must be a data frame or matrix", call. = FALSE)
+  if (length(n)>1)  stop("Argument 'n' with length > 1", call. = FALSE)
+  if (!is.integer(n)) stop("Argument 'n' must be an integer number", call. = FALSE)
+  if (length(sigma_est)>1)  stop("Argument 'sigma_est' with length > 1", call. = FALSE)
+  if (!is.logical(sigma_est)) stop("Argument 'sigma_est' must be a logic", call. = FALSE)
 
-gtemp <- function(i,g,a) {
+  gtemp <- function(i,g,a) {
     #Temporary function for resampling
     u <- stats::runif(1)
     loca <- (which(g>=u))
     a[loca[1]]
   }
 
-#if (dim(priors)[2] )
 
-measuData <- Data1[,1]
+  measuData <- Data1[,1]
 
-obs <- dim(Data1)[1]
-nv <- dim(Data1)[2]-1
+  obs <- dim(Data1)[1]
+  nv <- dim(Data1)[2]-1
 
 
-if (sigma_est == FALSE) {
-  if (missing(initDisPar)){
-    initDisPar <- rbind(c(min(Data1[,1]), max(Data1[,1])),
-                        cbind(stats::coef(stats::lm(Y~., data = Data1)) -  1,
-                              stats::coef(stats::lm(Y~., data = Data1)) + 1))
-  }
+  if (sigma_est == FALSE) {
+    if (missing(initDisPar)){
+      initDisPar <- rbind(c(min(Data1[,1]), max(Data1[,1])),
+                          cbind(stats::coef(stats::lm(Y~., data = Data1)) -  1,
+                                stats::coef(stats::lm(Y~., data = Data1)) + 1))
+    }
 
-  ParamName <- c('x', paste('a', 0:nv, sep = ''))
-  p <- length(ParamName)
+    ParamName <- c('x', paste('a', 0:nv, sep = ''))
+    p <- length(ParamName)
 
-  param <- mapply(stats::runif, initDisPar[,1], initDisPar[,2], n = n, SIMPLIFY = FALSE)
-  names(param) <- ParamName
+    param <- mapply(stats::runif, initDisPar[,1], initDisPar[,2], n = n, SIMPLIFY = FALSE)
+    names(param) <- ParamName
 
-  ParamResul <- param
-  names(ParamResul) <- paste(ParamName, 'Resul', sep = '')
+    ParamResul <- param
+    names(ParamResul) <- paste(ParamName, 'Resul', sep = '')
 
-  k1 <- length(measuData)
-  k <- 1
+    k1 <- length(measuData)
+    k <- 1
 
-  likel <- numeric(0)
-  cdf <- numeric(0)
-  A <- numeric()
+    likel <- numeric(0)
+    cdf <- numeric(0)
+    A <- numeric()
 
-  while (k <= k1){
+    while (k <= k1){
 
-    k <- k+1
+      k <- k+1
 
-    paramPredi <- param
-    paramPredi[[1]] <- Reduce("+", Map('*', param[2:(nv+2)], c(1,Data1[k-1,2:(nv+1)]))) # BE AWARE!! Not considered sigma
-    likel <- stats::dnorm(measuData[k-1], paramPredi[[1]], 1)
-    A <- cbind(A,likel)
+      paramPredi <- param
+      paramPredi[[1]] <- Reduce("+", Map('*', param[2:(nv+2)], c(1,Data1[k-1,2:(nv+1)]))) # BE AWARE!! Not considered sigma
+      likel <- stats::dnorm(measuData[k-1], paramPredi[[1]], 1)
+      A <- cbind(A,likel)
+      cdf <- cumsum(likel)
+      cdf <- cdf/max(cdf)
 
-    cdf <- cumsum(likel)
-    cdf <- cdf/max(cdf)
-
-    param <- lapply(1:p, function(j) sapply(1:100, function(i) gtemp(i, cdf, paramPredi[[j]]) ) )
-    ParamResul <- mapply(rbind, ParamResul, param, SIMPLIFY = FALSE)
+      param <- lapply(1:p, function(j) sapply(1:100, function(i) gtemp(i, cdf, paramPredi[[j]]) ) )
+      ParamResul <- mapply(rbind, ParamResul, param, SIMPLIFY = FALSE)
     }
   }
 
-else {
+  else {
 
     if (missing(initDisPar)){
       initDisPar <- rbind(c(min(Data1[,1]), max(Data1[,1])),
@@ -187,11 +190,13 @@ else {
     }
   }
 
-#plot(apply(ParamResul[['a2Resul']],1,mean),type="l")
-#abline(h = 2.6, col='red')
-#apply(ParamResul[['a1Resul']],1,mean)
-#sapply(1:p, function(i) summary(apply(ParamResul[[i]],1,mean)))
+  #In our example, to plot the output user can make use of:
+  #plot(apply(ParamResul[['a2Resul']],1,mean),type="l")
+  #abline(h = 2.6, col='red')
+  #A quick summary of the results:
+  #apply(ParamResul[['a1Resul']],1,mean)
+  #sapply(1:p, function(i) summary(apply(ParamResul[[i]],1,mean)))
 
-ParamResul
+  ParamResul
 }
 

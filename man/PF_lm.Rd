@@ -28,7 +28,9 @@ We estimate the coefficients (in what follows: parameters) of a linear regressio
 
 \eqn{Y = \beta_0  + \beta_1*X_1 + ... + \beta_n*X_n  + \epsilon},  (\eqn{\epsilon \sim N(0,1)})
 
-using particle filter methods. The state-space equations are considered as follows:
+using particle filter methods. The algorithm implementation follows the work of An, D., Choi, J. H., Kim, N. H. (2013) adapted for the case of linear models.
+
+The state-space equations are considered as follows:
 
 \eqn{(Eq. 1) X_{k} = a_0 + a_1 * X1_{k-1} + ... + a_n * Xn_{k-1}}
 
@@ -84,6 +86,8 @@ plot(apply(Res3[['a2Resul']],1,mean),type="l")
 
 }
 \references{
+An, D., Choi, J. H., Kim, N. H. (2013). Prognostics 101: A tutorial for particle filter-based prognostics algorithm using Matlab. Reliability Engineering & System Safety, 115, DOI: https://doi.org/10.1016/j.ress.2013.02.019
+
 Ristic, B., Arulampalam, S., Gordon, N. (2004). Beyond the Kalman filter: particle filters for tracking applications. Boston, MA: Artech House. ISBN: 158053631X.
 
 West, M., Harrison, J. (1997). Bayesian forecasting and dynamic models (2nd ed.). New York: Springer. ISBN: 0387947256.
